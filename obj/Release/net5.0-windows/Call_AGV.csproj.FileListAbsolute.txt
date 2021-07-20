@@ -13,7 +13,6 @@ F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\K4os.Hash.xxHash.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\MySql.Data.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\Ubiety.Dns.Core.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\Zstandard.Net.dll
-F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.csproj.AssemblyReference.cache
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.Form1.resources
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.csproj.GenerateResource.cache
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.GeneratedMSBuildEditorConfig.editorconfig

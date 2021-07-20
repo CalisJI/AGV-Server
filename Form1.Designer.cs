@@ -38,7 +38,7 @@ namespace Call_AGV
             this.button5 = new System.Windows.Forms.Button();
             this.contextMenuStrip1 = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.informationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.toolStripTextBox1 = new System.Windows.Forms.ToolStripTextBox();
+            this.TB_Station = new System.Windows.Forms.ToolStripTextBox();
             this.TB_ID = new System.Windows.Forms.ToolStripTextBox();
             this.TB_X = new System.Windows.Forms.ToolStripTextBox();
             this.TB_Y = new System.Windows.Forms.ToolStripTextBox();
@@ -50,11 +50,13 @@ namespace Call_AGV
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.TB_Save = new System.Windows.Forms.ToolStripMenuItem();
             this.removeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.button7 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
             this.comboBox1 = new System.Windows.Forms.ComboBox();
             this.button6 = new System.Windows.Forms.Button();
             this.textBox2 = new System.Windows.Forms.TextBox();
+            this.button7 = new System.Windows.Forms.Button();
+            this.button8 = new System.Windows.Forms.Button();
+            this.textBox3 = new System.Windows.Forms.TextBox();
             this.contextMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -67,6 +69,7 @@ namespace Call_AGV
             this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.panel1_Paint);
             this.panel1.MouseDown += new System.Windows.Forms.MouseEventHandler(this.panel1_MouseDown);
             this.panel1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.panel1_MouseMove);
+            this.panel1.MouseUp += new System.Windows.Forms.MouseEventHandler(this.panel1_MouseUp);
             // 
             // textBox1
             // 
@@ -87,7 +90,7 @@ namespace Call_AGV
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(1200, 120);
+            this.button2.Location = new System.Drawing.Point(1203, 72);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(152, 48);
             this.button2.TabIndex = 2;
@@ -97,7 +100,7 @@ namespace Call_AGV
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(1200, 174);
+            this.button4.Location = new System.Drawing.Point(1203, 180);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(152, 48);
             this.button4.TabIndex = 2;
@@ -107,7 +110,7 @@ namespace Call_AGV
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(1198, 282);
+            this.button5.Location = new System.Drawing.Point(1203, 288);
             this.button5.Name = "button5";
             this.button5.Size = new System.Drawing.Size(152, 48);
             this.button5.TabIndex = 2;
@@ -127,7 +130,7 @@ namespace Call_AGV
             // informationToolStripMenuItem
             // 
             this.informationToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.toolStripTextBox1,
+            this.TB_Station,
             this.TB_ID,
             this.TB_X,
             this.TB_Y,
@@ -142,11 +145,11 @@ namespace Call_AGV
             this.informationToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
             this.informationToolStripMenuItem.Text = "Information";
             // 
-            // toolStripTextBox1
+            // TB_Station
             // 
-            this.toolStripTextBox1.Name = "toolStripTextBox1";
-            this.toolStripTextBox1.Size = new System.Drawing.Size(100, 23);
-            this.toolStripTextBox1.Text = "Trạm";
+            this.TB_Station.Name = "TB_Station";
+            this.TB_Station.Size = new System.Drawing.Size(100, 23);
+            this.TB_Station.Text = "Trạm";
             // 
             // TB_ID
             // 
@@ -223,19 +226,9 @@ namespace Call_AGV
             this.removeToolStripMenuItem.Text = "Remove";
             this.removeToolStripMenuItem.Click += new System.EventHandler(this.removeToolStripMenuItem_Click);
             // 
-            // button7
-            // 
-            this.button7.Location = new System.Drawing.Point(1200, 40);
-            this.button7.Name = "button7";
-            this.button7.Size = new System.Drawing.Size(152, 48);
-            this.button7.TabIndex = 2;
-            this.button7.Text = "Connect SQL Server";
-            this.button7.UseVisualStyleBackColor = true;
-            this.button7.Click += new System.EventHandler(this.button7_Click);
-            // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(1198, 228);
+            this.button3.Location = new System.Drawing.Point(1203, 234);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(152, 48);
             this.button3.TabIndex = 3;
@@ -246,7 +239,7 @@ namespace Call_AGV
             // comboBox1
             // 
             this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(1200, 91);
+            this.comboBox1.Location = new System.Drawing.Point(1203, 43);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(152, 23);
             this.comboBox1.TabIndex = 4;
@@ -255,7 +248,7 @@ namespace Call_AGV
             // button6
             // 
             this.button6.BackColor = System.Drawing.SystemColors.ActiveCaption;
-            this.button6.Location = new System.Drawing.Point(1198, 336);
+            this.button6.Location = new System.Drawing.Point(1203, 342);
             this.button6.Name = "button6";
             this.button6.Size = new System.Drawing.Size(152, 48);
             this.button6.TabIndex = 2;
@@ -268,18 +261,47 @@ namespace Call_AGV
             this.textBox2.BackColor = System.Drawing.SystemColors.InfoText;
             this.textBox2.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.textBox2.ForeColor = System.Drawing.Color.Lime;
-            this.textBox2.Location = new System.Drawing.Point(1200, 399);
+            this.textBox2.Location = new System.Drawing.Point(1203, 405);
             this.textBox2.Multiline = true;
             this.textBox2.Name = "textBox2";
             this.textBox2.ScrollBars = System.Windows.Forms.ScrollBars.Both;
             this.textBox2.Size = new System.Drawing.Size(150, 65);
             this.textBox2.TabIndex = 5;
             // 
+            // button7
+            // 
+            this.button7.Location = new System.Drawing.Point(1203, 126);
+            this.button7.Name = "button7";
+            this.button7.Size = new System.Drawing.Size(152, 48);
+            this.button7.TabIndex = 2;
+            this.button7.Text = "Delete Map";
+            this.button7.UseVisualStyleBackColor = true;
+            this.button7.Click += new System.EventHandler(this.drop_btn);
+            // 
+            // button8
+            // 
+            this.button8.Location = new System.Drawing.Point(1237, 522);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(75, 23);
+            this.button8.TabIndex = 6;
+            this.button8.Text = "button8";
+            this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
+            // 
+            // textBox3
+            // 
+            this.textBox3.Location = new System.Drawing.Point(1237, 493);
+            this.textBox3.Name = "textBox3";
+            this.textBox3.Size = new System.Drawing.Size(100, 23);
+            this.textBox3.TabIndex = 7;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1370, 734);
+            this.Controls.Add(this.textBox3);
+            this.Controls.Add(this.button8);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.button3);
@@ -320,14 +342,16 @@ namespace Call_AGV
         private System.Windows.Forms.ToolStripTextBox TB_DIR;
         private System.Windows.Forms.ToolStripTextBox TB_LIFT;
         private System.Windows.Forms.ToolStripMenuItem removeToolStripMenuItem;
-        private System.Windows.Forms.Button button7;
         private System.Windows.Forms.Button button3;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ComboBox comboBox1;
         private System.Windows.Forms.ToolStripMenuItem TB_Save;
-        private System.Windows.Forms.ToolStripTextBox toolStripTextBox1;
+        private System.Windows.Forms.ToolStripTextBox TB_Station;
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.Button button7;
+        private System.Windows.Forms.Button button8;
+        private System.Windows.Forms.TextBox textBox3;
     }
 }
 

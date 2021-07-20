@@ -15,10 +15,19 @@ namespace Call_AGV
     {
         public static string Write_txt = "Write.txt";
         public static string Read_txt = "Read.txt";
+        public static string GPS = "GPS.txt";
         private static string Xml_path = Application.StartupPath + @"\" + "System Configuration.xml";
+        static Call_AGV_Configue call_AGV_Configue = new Call_AGV_Configue();
+
         public static string Create_MapFile(string FileName)
         {
             string MapFile = Application.StartupPath + @"\" + FileName + ".xml";
+            return MapFile;
+        }
+        public static string Community_MapFile(string FileName)
+        {
+            call_AGV_Configue = GetSystem_Config();
+            string MapFile = call_AGV_Configue.Path_Communicate + @"\" + FileName + ".xml";
             return MapFile;
         }
         #region Con_figuration APP
@@ -88,6 +97,7 @@ namespace Call_AGV
                 Mapping.Position = new List<System.Drawing.Point>();
                 Mapping.Rectangles_2_Fill = new List<System.Drawing.Rectangle>();
                 Mapping.Route = new List<System.Drawing.Point>();
+               
                 XmlSerializer xmlSerializer = new XmlSerializer(typeof(Mapping));
                 Stream stream = new FileStream(Create_MapFile(Mapping_path), FileMode.Create);
                 XmlWriter xmlwriter = new XmlTextWriter(stream, Encoding.UTF8);
@@ -103,6 +113,47 @@ namespace Call_AGV
             using (TextWriter textWriter = new StreamWriter(Create_MapFile(MapFile_Path))) 
             {
                 xmlSerializer.Serialize(textWriter, mapping);
+                textWriter.Close();
+            }
+        }
+        public static Community Get_community(string Mapping_path)
+        {
+            if (File.Exists(Community_MapFile(Mapping_path)))
+            {
+                XmlSerializer xmlSerializer = new XmlSerializer(typeof(Community));
+                Stream stream = new FileStream(Community_MapFile(Mapping_path), FileMode.Open);
+                Community Community = (Community)xmlSerializer.Deserialize(stream);
+                stream.Close();
+                return Community;
+            }
+            else
+            {
+                Community Community = new Community();
+
+                Community.DataTable = new System.Data.DataTable { TableName = "Map_Data" };
+                Community.DataTable.Columns.Add("ID", typeof(string));
+                Community.DataTable.Columns.Add("X", typeof(string));
+                Community.DataTable.Columns.Add("Y", typeof(string));
+                Community.DataTable.Columns.Add("RUN", typeof(string));
+                Community.DataTable.Columns.Add("LR", typeof(string));
+                Community.DataTable.Columns.Add("SPEED", typeof(string));
+                Community.DataTable.Columns.Add("DIR", typeof(string));
+                Community.DataTable.Columns.Add("LIFT", typeof(string));
+                XmlSerializer xmlSerializer = new XmlSerializer(typeof(Community));
+                Stream stream = new FileStream(Community_MapFile(Mapping_path), FileMode.Create);
+                XmlWriter xmlwriter = new XmlTextWriter(stream, Encoding.UTF8);
+                xmlSerializer.Serialize(xmlwriter, Community);
+                xmlwriter.Close();
+                stream.Close();
+                return Community;
+            }
+        }
+        public static void Update_Mapping(Community Community, string MapFile_Path)
+        {
+            XmlSerializer xmlSerializer = new XmlSerializer(typeof(Community));
+            using (TextWriter textWriter = new StreamWriter(Community_MapFile(MapFile_Path)))
+            {
+                xmlSerializer.Serialize(textWriter, Community);
                 textWriter.Close();
             }
         }

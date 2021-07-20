@@ -24,3 +24,4 @@ F:\VISUAL PROJECT\C#\Call_AGV\bin\Debug\net5.0-windows\MySql.Data.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Debug\net5.0-windows\Ubiety.Dns.Core.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Debug\net5.0-windows\Zstandard.Net.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Debug\net5.0-windows\Call_AGV.csproj.CopyComplete
+F:\VISUAL PROJECT\C#\Call_AGV\obj\Debug\net5.0-windows\Call_AGV.csproj.AssemblyReference.cache
