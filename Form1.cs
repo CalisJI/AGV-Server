@@ -123,6 +123,7 @@ namespace Call_AGV
         int z = 0;
         int t = 0;
         int dem = 0;
+        string GPS = string.Empty;
         private void FileSystemWatcher1_Changed(object sender, FileSystemEventArgs e)
         {
             if (e.FullPath == Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.GPS)
@@ -146,9 +147,10 @@ namespace Call_AGV
                         {
                             MethodInvoker inv = delegate
                             {
-                               //AGV_location
+                                GPS = sr.ReadLine();
                             }; this.Invoke(inv);
                         }
+                        panel1.Refresh();
                     }
                     t = 0;
                 }
@@ -264,7 +266,7 @@ namespace Call_AGV
         private void Timer_Tick(object sender, EventArgs e)
         {
             blink++;
-            AGV_location(textBox3.Text);
+            AGV_location(GPS);
         }
         int blink = 0;
         Point temp_Poi = new Point();
@@ -439,7 +441,45 @@ namespace Call_AGV
                     }
                     break;
                 case 0:
+                    if (e.Button == MouseButtons.Right)
+                    {
+                        int i = 0;
+                        foreach (var item in Fill_circle)
+                        {
+                            if ((e.X > item.X && (e.X < item.X + item.Width)) && (e.Y > item.Y && (e.Y < item.Y + item.Height)))
+                            {
+                                Point point = new Point(item.X, item.Y);
+                                for (int fi = 0; fi < DataTable.Rows.Count; fi++)
+                                {
+                                    string x = DataTable.Rows[fi][1].ToString();
+                                    string y = DataTable.Rows[fi][2].ToString();
+                                    if (item.X + size_rec / 2 == Convert.ToInt32(x) && item.Y + size_rec / 2 == Convert.ToInt32(y))
+                                    {
+                                        MethodInvoker inv = delegate
+                                        {
+                                            TB_Station.Text = "CARD: " + fi.ToString();
+                                            TB_ID.Text = "ID:" + DataTable.Rows[fi][0].ToString();
+                                            TB_RUN.Text = "RUN:" + DataTable.Rows[fi][3].ToString();
+                                            TB_LR.Text = "LR:" + DataTable.Rows[fi][4].ToString();
+                                            TB_SPEED.Text = "SPEED:" + DataTable.Rows[fi][5].ToString();
+                                            TB_DIR.Text = "DIR:" + DataTable.Rows[fi][6].ToString();
+                                            TB_LIFT.Text = "LIFT:" + DataTable.Rows[fi][7].ToString();
+                                        }; this.Invoke(inv);
+                                        break;
+                                    }
+                                }
+                                TB_X.Text = "X: " + item.X.ToString();
+                                TB_Y.Text = "Y: " + item.Y.ToString();
+                                remove_point = point;
+                                contextMenuStrip1.Items[1].Text = "Remove Point";
+                                contextMenuStrip1.Show(point);
 
+                                break;
+                            }
+                            i++;
+                        }
+
+                    }
                     break;
                 case 2:
                     if (e.Button == MouseButtons.Left)
@@ -1073,12 +1113,6 @@ namespace Call_AGV
             
         }
 
-        private void button8_Click(object sender, EventArgs e)
-        {
-            blink = 0;
-            panel1.Refresh();
-            AGV_location(textBox3.Text);
-
-        }
+       
     }
 }
