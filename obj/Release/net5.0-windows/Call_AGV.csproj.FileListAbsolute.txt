@@ -24,3 +24,4 @@ F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\ref\Call_AGV.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.pdb
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.genruntimeconfig.cache
+F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.csproj.AssemblyReference.cache
