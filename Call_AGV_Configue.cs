@@ -14,6 +14,7 @@ namespace Call_AGV
         public List<string> File_data { get; set; }
         public string Selected_Station { get; set; }
         public string Path_Communicate { get; set; }
+        public int Dem { get; set; }
 
     }
 }

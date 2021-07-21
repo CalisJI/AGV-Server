@@ -14,7 +14,7 @@ namespace Call_AGV
         public List<Rectangle> Rectangles { get; set; }
         public List<Rectangle> Rectangles_2_Fill { get; set; }
         public List<string> Toa_Do { get; set; }
-        public List<Point> Route { get; set; }
+        public DataTable Route { get; set; } = new DataTable { TableName = "Point" };
        
 
     }

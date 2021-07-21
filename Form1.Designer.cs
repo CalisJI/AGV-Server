@@ -55,6 +55,8 @@ namespace Call_AGV
             this.button6 = new System.Windows.Forms.Button();
             this.textBox2 = new System.Windows.Forms.TextBox();
             this.button7 = new System.Windows.Forms.Button();
+            this.button8 = new System.Windows.Forms.Button();
+            this.textBox3 = new System.Windows.Forms.TextBox();
             this.contextMenuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -73,6 +75,7 @@ namespace Call_AGV
             // 
             this.textBox1.Location = new System.Drawing.Point(1203, 11);
             this.textBox1.Name = "textBox1";
+            this.textBox1.ReadOnly = true;
             this.textBox1.Size = new System.Drawing.Size(120, 23);
             this.textBox1.TabIndex = 1;
             // 
@@ -208,12 +211,12 @@ namespace Call_AGV
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(157, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
             // 
             // TB_Save
             // 
             this.TB_Save.Name = "TB_Save";
-            this.TB_Save.Size = new System.Drawing.Size(160, 22);
+            this.TB_Save.Size = new System.Drawing.Size(180, 22);
             this.TB_Save.Text = "Save Setting";
             this.TB_Save.Click += new System.EventHandler(this.TB_Save_Click);
             // 
@@ -276,11 +279,30 @@ namespace Call_AGV
             this.button7.UseVisualStyleBackColor = true;
             this.button7.Click += new System.EventHandler(this.drop_btn);
             // 
+            // button8
+            // 
+            this.button8.Location = new System.Drawing.Point(1238, 527);
+            this.button8.Name = "button8";
+            this.button8.Size = new System.Drawing.Size(75, 23);
+            this.button8.TabIndex = 6;
+            this.button8.Text = "button8";
+            this.button8.UseVisualStyleBackColor = true;
+            this.button8.Click += new System.EventHandler(this.button8_Click);
+            // 
+            // textBox3
+            // 
+            this.textBox3.Location = new System.Drawing.Point(1238, 495);
+            this.textBox3.Name = "textBox3";
+            this.textBox3.Size = new System.Drawing.Size(100, 23);
+            this.textBox3.TabIndex = 7;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1370, 734);
+            this.Controls.Add(this.textBox3);
+            this.Controls.Add(this.button8);
             this.Controls.Add(this.textBox2);
             this.Controls.Add(this.comboBox1);
             this.Controls.Add(this.button3);
@@ -329,6 +351,8 @@ namespace Call_AGV
         private System.Windows.Forms.Button button6;
         private System.Windows.Forms.TextBox textBox2;
         private System.Windows.Forms.Button button7;
+        private System.Windows.Forms.Button button8;
+        private System.Windows.Forms.TextBox textBox3;
     }
 }
 

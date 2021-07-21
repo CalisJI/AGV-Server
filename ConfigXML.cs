@@ -7,6 +7,7 @@ using System.Xml.Serialization;
 using System.Xml;
 using System.IO;
 using System.Windows.Forms;
+using System.Drawing;
 
 
 namespace Call_AGV
@@ -96,8 +97,12 @@ namespace Call_AGV
                 Mapping.Rectangles = new List<System.Drawing.Rectangle>();
                 Mapping.Position = new List<System.Drawing.Point>();
                 Mapping.Rectangles_2_Fill = new List<System.Drawing.Rectangle>();
-                Mapping.Route = new List<System.Drawing.Point>();
-               
+                Mapping.Route = new System.Data.DataTable { TableName = "Point" };
+                Mapping.Route.Columns.Add("Start", typeof(Point));
+                Mapping.Route.Columns.Add("T1", typeof(Point));
+                Mapping.Route.Columns.Add("T2", typeof(Point));
+                Mapping.Route.Columns.Add("T3", typeof(Point));
+                Mapping.Route.Columns.Add("T4", typeof(Point));
                 XmlSerializer xmlSerializer = new XmlSerializer(typeof(Mapping));
                 Stream stream = new FileStream(Create_MapFile(Mapping_path), FileMode.Create);
                 XmlWriter xmlwriter = new XmlTextWriter(stream, Encoding.UTF8);
