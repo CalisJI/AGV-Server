@@ -16,6 +16,7 @@ namespace Call_AGV
     public partial class Form1 : Form
     {
         DataTable DataTable = new DataTable { TableName="Map_Data"};
+        DataTable Station_TB = new DataTable { TableName = "Sation" };
         DataTable Route = new DataTable { TableName = "Point" };
         Mapping Mapping = new Mapping();
         Call_AGV_Configue Call_AGV_Configue = new Call_AGV_Configue();
@@ -25,6 +26,11 @@ namespace Call_AGV
         MySQL_dosomething mySQL_Dosomething = new MySQL_dosomething();
         BackgroundWorker Download_DATA_BGR = new BackgroundWorker();
         Community Community = new Community();
+        ToolTip ToolTip1 = new ToolTip();
+        ToolTip ToolTip2 = new ToolTip();
+        ToolTip ToolTip3 = new ToolTip();
+        ToolTip ToolTip4 = new ToolTip();
+        ToolTip ToolTip5 = new ToolTip();
         public Form1()
         {
             InitializeComponent();
@@ -47,6 +53,19 @@ namespace Call_AGV
             Route.Columns.Add("T2", typeof(Point));
             Route.Columns.Add("T3", typeof(Point));
             Route.Columns.Add("T4", typeof(Point));
+            Station_TB.Columns.Add("Sation Name", typeof(String));
+            Station_TB.Columns.Add("Status", typeof(Boolean));
+            Station_TB.Columns.Add("Point", typeof(Point));
+            toolTip1.SetToolTip(button7, "Remove This Navigation Map");
+            toolTip1.SetToolTip(button4, "Edit location of RIFD Card");
+            toolTip1.SetToolTip(button3, "Match Point");
+            toolTip1.SetToolTip(button5, "Download Navigation to AGV");
+            toolTip1.SetToolTip(button6, "Call AGV");
+            toolTip1.SetToolTip(button9, "Edit Station");
+            toolTip1.SetToolTip(textBox2, "AGV Response");
+            label3.Visible = false;
+            label4.Visible = false;
+            label6.Visible = false;
 
 
         }
@@ -64,8 +83,11 @@ namespace Call_AGV
                 Community = ConfigXML.Get_community(Call_AGV_Configue.Selected_Station);
                 File_data = Call_AGV_Configue.File_data;             
                 Fill_circle = Mapping.Rectangles_2_Fill;
+                Station = Mapping.Rectangles;
+                Station_TB = Mapping.Sation;
                 DataTable = Community.DataTable;
-                Route = Mapping.Route;             
+                Route = Mapping.Route;
+                FIFO = Call_AGV_Configue.Dem;
                 MethodInvoker inv = delegate
                 {
                     textBox1.Text = Call_AGV_Configue.Path_Communicate;
@@ -140,7 +162,7 @@ namespace Call_AGV
                 {
                    
                     int a = 0;
-                    using (StreamReader sr = new StreamReader(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.Write_txt))
+                    using (StreamReader sr = new StreamReader(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.GPS))
                     {
                         while (sr.ReadLine() != null)
                         {
@@ -148,13 +170,17 @@ namespace Call_AGV
                             a++;
                         }
                     }
-                    using (StreamReader sr = new StreamReader(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.Write_txt))
+                    using (StreamReader sr = new StreamReader(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.GPS))
                     {
                         for (int b = 0; b < a; b++)
                         {
                             MethodInvoker inv = delegate
                             {
-                                GPS = sr.ReadLine();
+                                GPS = sr.ReadLine();                            
+                                blink = 0;
+                                AGV_location(GPS);
+                                panel1.Refresh();
+
                             }; this.Invoke(inv);
                         }
                         panel1.Refresh();
@@ -172,7 +198,7 @@ namespace Call_AGV
 
                 if (z == 2)
                 {
-                    dem++;
+                   
                     int a = 0;
                     using (StreamReader sr = new StreamReader(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.Write_txt))
                     {
@@ -188,7 +214,7 @@ namespace Call_AGV
                         {
                             MethodInvoker inv = delegate
                             {
-                                textBox2.AppendText(sr.ReadLine() + "(" + dem.ToString() + ")" + Environment.NewLine);
+                                textBox2.AppendText(sr.ReadLine() + Environment.NewLine);
                             }; this.Invoke(inv);
                         }
                     }
@@ -199,6 +225,11 @@ namespace Call_AGV
         }
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
+            Mapping.Rectangles = Station;
+            Mapping.Rectangles_2_Fill = Fill_circle;
+            Mapping.Route = Route;
+            Mapping.Sation = Station_TB;
+            Community.DataTable = DataTable;
 
             ConfigXML.Update_Mapping(Mapping, comboBox1.Text);
             ConfigXML.Update_Mapping(Community, comboBox1.Text);
@@ -216,6 +247,8 @@ namespace Call_AGV
             File_data = Call_AGV_Configue.File_data;
             DataTable = Community.DataTable;
             Fill_circle = Mapping.Rectangles_2_Fill;
+            Station_TB = Mapping.Sation;
+            Station = Mapping.Rectangles;
             Route = Mapping.Route;
             panel1.Refresh();
         }
@@ -223,10 +256,11 @@ namespace Call_AGV
         #region Draw point
         List<Rectangle> Board = new List<Rectangle>();
         int size_rec = 8;
+        int Station_Size = 16;
         void Draw_Point_Board(PaintEventArgs e)
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
-            if (mode == 1) 
+            if (mode == 1||mode==3) 
             {
                 Board.Clear();
                 for (int i = 0; i < panel1.Width; i += 30)
@@ -243,9 +277,31 @@ namespace Call_AGV
                 foreach (var item in Fill_circle)
                 {
                     e.Graphics.FillEllipse(Brushes.Orange, item);
+
+                }
+            }
+            if (Station != null) 
+            {
+                for (int i = 0; i < Station.Count; i++)
+                {
+                    if ((Boolean)Station_TB.Rows[i][1] == true) 
+                    {
+                        e.Graphics.FillRectangle(Brushes.Green, Station[i]);
+                        string dd = Station_TB.Rows[i][0].ToString();
+                        Font font = new Font("Times New Roman", 8);
+                        e.Graphics.DrawString(dd, font, Brushes.Red, Station[i].X-10, Station[i].Y-13);
+                    }
+                    else 
+                    {
+                        e.Graphics.DrawRectangle(new Pen(Color.DarkGray, 2), Station[i]);
+                        string dd = Station_TB.Rows[i][0].ToString();
+                        Font font = new Font("Times New Roman", 8);
+                        e.Graphics.DrawString(dd, font, Brushes.Red, Station[i].X-10, Station[i].Y-13);
+                    }
                 }
             }
         }
+        
         void Draw_Route(PaintEventArgs e) 
         {
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
@@ -365,20 +421,20 @@ namespace Call_AGV
                                                 {
                                                     Point point1 = (Point)Route.Rows[i][1];
                                                    
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                        
                                                         goto done;
                                                     
                                                 }
                                             }
                                             //TH2 U->D
-                                            else if (point.Y < temp_Poi.Y )
+                                            else if (point.Y > temp_Poi.Y )
                                             {
                                                 if (Route.Rows[i][1] != DBNull.Value)
                                                 {
                                                     Point point1 = (Point)Route.Rows[i][1];
                                                    
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                        
                                                         goto done;
                                                    
@@ -390,18 +446,18 @@ namespace Call_AGV
                                                 if (Route.Rows[i][1] != DBNull.Value)
                                                 {
                                                     Point point1 = (Point)Route.Rows[i][1];                                                   
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);                                                    
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);                                                    
                                                         goto done;
                                                     
                                                 }
                                             }
                                             //TH4 D->U
-                                            else if (point.Y > temp_Poi.Y )
+                                            else if (point.Y < temp_Poi.Y )
                                             {
                                                 if (Route.Rows[i][1] != DBNull.Value)
                                                 {
                                                     Point point1 = (Point)Route.Rows[i][1];
-                                                    graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                    graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     goto done;
 
                                                 }
@@ -418,11 +474,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.Y > point2.Y) 
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                     else 
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                 }
                                                 else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
@@ -431,17 +487,17 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.Y > point2.Y)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                 }
                                                
                                             }
                                             //TH2 U->D
-                                            else if (point.Y < temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            else if (point.Y > temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
                                             {
                                                 if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1 || int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
                                                 {
@@ -449,11 +505,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.X < point2.X)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                 }
                                                 else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
@@ -462,11 +518,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.X < point2.X)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                 }
 
@@ -480,11 +536,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.Y < point2.Y)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                 }
                                                 else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
@@ -493,17 +549,17 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.Y < point2.Y)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                 }
 
                                             }
                                             //TH4 D->U
-                                            else if (point.Y > temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            else if (point.Y < temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
                                             {
                                                 if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1 || int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
                                                 {
@@ -511,11 +567,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.X > point2.X)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                 }
                                                 else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
@@ -524,11 +580,11 @@ namespace Call_AGV
                                                     Point point2 = (Point)Route.Rows[i][2];
                                                     if (point1.X > point2.X)
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                     }
                                                     else
                                                     {
-                                                        graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                     }
                                                 }
 
@@ -552,48 +608,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y > point3.Y) 
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else 
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else 
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y) 
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -607,60 +663,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y > point2.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y > point4.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                        
@@ -678,48 +734,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y< point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -733,60 +789,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y < point2.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y < point4.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point4.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y < point4.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y < point1.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y < point1.Y && point4.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.X < point.X)
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -803,60 +859,60 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                     }
@@ -870,108 +926,108 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point4.X < point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
 
@@ -979,12 +1035,10 @@ namespace Call_AGV
                                                 }
                                             }
                                             //TH2 U->D
-                                            else if (point.Y < temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            else if (point.Y > temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
                                             {
                                                 if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
                                                 {
-
-
                                                     if (c == 3)
                                                     {
                                                         Point point1 = (Point)Route.Rows[i][1];
@@ -994,48 +1048,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X < point2.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point1.Y && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -1049,60 +1103,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X < point2.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X < point4.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point4.X && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X < point4.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X < point1.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X < point1.X && point3.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X < point2.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X < point1.X && point4.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.Y < point.Y)
                                                         {
                                                             if (point1.X < point2.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point1.X && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -1120,48 +1174,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -1175,60 +1229,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X > point2.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point4.X && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X > point4.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.Y < point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -1245,60 +1299,60 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                     }
@@ -1312,108 +1366,108 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X > point2.X && point4.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X > point2.X && point4.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X > point4.X && point3.X > point2.X && point4.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.X && point3.X > point2.X && point4.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point2.Y < point.Y)
                                                         {
                                                             if (point1.X > point4.X && point1.X > point3.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point1.X > point4.X && point1.X > point3.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point3.Y < point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point4.X && point2.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point4.X && point2.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point4.Y < point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.X && point3.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
 
@@ -1436,48 +1490,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X > point.X)
                                                         {
                                                             if (point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X > point.X)
                                                         {
                                                             if (point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -1491,60 +1545,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y < point2.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y < point4.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point4.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X < point.X)
                                                         {
                                                             if (point1.Y < point4.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y < point1.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X < point.X)
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y < point1.Y && point4.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.X < point.X)
                                                         {
                                                             if (point1.Y < point2.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y < point1.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y < point1.Y && point3.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -1562,48 +1616,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X > point.X)
                                                         {
                                                             if (point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X > point.X)
                                                         {
                                                             if (point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 42), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -1617,60 +1671,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y > point2.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X > point.X)
                                                         {
                                                             if (point1.Y > point4.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X > point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.X > point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -1687,60 +1741,60 @@ namespace Call_AGV
                                                         {
                                                             if (point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.X > point.X)
                                                         {
                                                             if (point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.X > point.X)
                                                         {
                                                             if (point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                     }
@@ -1754,108 +1808,108 @@ namespace Call_AGV
                                                         {
                                                             if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point2.X > point.X)
                                                         {
                                                             if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point3.X > point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y < point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y > point4.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point4.X > point.X)
                                                         {
                                                             if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
 
@@ -1863,7 +1917,7 @@ namespace Call_AGV
                                                 }
                                             }
                                             //TH4 D->U
-                                            else if (point.Y > temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            else if (point.Y < temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
                                             {
                                                 if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
                                                 {
@@ -1878,48 +1932,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point1.Y && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -1933,60 +1987,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X > point2.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point4.X && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X > point4.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -2004,48 +2058,48 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X < point2.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point1.X && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                     }
@@ -2059,60 +2113,60 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X < point2.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X < point4.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point4.X && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X < point4.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X < point1.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X < point1.X && point3.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X < point2.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X < point1.X && point4.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point4.Y > point.Y)
                                                         {
                                                             if (point1.X < point2.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point2.X < point1.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point3.X < point1.X && point3.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
 
@@ -2129,60 +2183,60 @@ namespace Call_AGV
                                                         {
                                                             if (point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                     }
@@ -2196,108 +2250,108 @@ namespace Call_AGV
                                                         {
                                                             if (point4.X > point2.X && point4.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point4.X > point2.X && point4.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point4.X && point2.X > point3.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.X > point4.X && point3.X > point2.X && point4.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point3.Y > point4.X && point3.X > point2.X && point4.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point2.Y > point.Y)
                                                         {
                                                             if (point1.X > point4.X && point1.X > point3.X && point4.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point1.X > point4.X && point1.X > point3.X && point4.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point4.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                         }
                                                         else if (point3.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point4.X && point2.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point4.X && point2.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X && point1.X < point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point4);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point4.X && point1.X > point4.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point4.X > point1.X && point4.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
                                                         else if (point4.Y > point.Y)
                                                         {
                                                             if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                             else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point3);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
                                                             }
                                                             else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point1);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
                                                             }
                                                             else if (point3.Y > point1.X && point3.X > point2.X && point1.X < point2.X)
                                                             {
-                                                                graphics.DrawLine(new Pen(Color.Red, 2), point, point2);
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
                                                             }
                                                         }
 
@@ -2316,9 +2370,1975 @@ namespace Call_AGV
                                 //}
 
                             }
-                            else if (int.Parse(DataTable.Rows[Get_index][6].ToString()) == 0 && int.Parse(DataTable.Rows[Get_index][5].ToString()) != 0)
+                            else if (int.Parse(DataTable.Rows[Get_index][6].ToString()) == 0)
                             {
+                                 Point point = new Point(get_locaion(ID).X + size_rec, get_locaion(ID).Y + size_rec);
+                                for (int i = 0; i < Route.Rows.Count; i++)
+                                {
+                                    
+                                    if ((Point)Route.Rows[i][0] == point) 
+                                    {
+                                        int c = 0;
+                                        for (int g = 1; g < Route.Columns.Count; g++)
+                                        {
+                                            if (Route.Rows[i][g] != DBNull.Value) 
+                                            {
+                                                c++;
+                                            }
+                                        }
+                                        if (c == 1) 
+                                        {
+                                            //TH1 R->L
+                                            if (point.X >= temp_Poi.X )
+                                            {                                               
+                                                if (Route.Rows[i][1] != DBNull.Value)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                   
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                       
+                                                        goto done;
+                                                    
+                                                }
+                                            }
+                                            //TH2 U->D
+                                            else if (point.Y >= temp_Poi.Y )
+                                            {
+                                                if (Route.Rows[i][1] != DBNull.Value)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                   
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                       
+                                                        goto done;
+                                                   
+                                                }
+                                            }
+                                            //TH3 L->R
+                                            else if (point.X <= temp_Poi.X )
+                                            {
+                                                if (Route.Rows[i][1] != DBNull.Value)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];                                                   
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);                                                    
+                                                        goto done;
+                                                    
+                                                }
+                                            }
+                                            //TH4 D->U
+                                            else if (point.Y <= temp_Poi.Y )
+                                            {
+                                                if (Route.Rows[i][1] != DBNull.Value)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    goto done;
 
+                                                }
+                                            }
+                                        }
+                                        else if (c==2) 
+                                        {
+                                            //TH1 R=>L
+                                            if (point.X >= temp_Poi.X && Math.Abs(point.Y - temp_Poi.Y) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1||int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.Y > point2.Y) 
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                    else 
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.Y > point2.Y)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                }
+                                               
+                                            }
+                                            //TH2 U->D
+                                            else if (point.Y >= temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1 || int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.X < point2.X)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.X < point2.X)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                }
+
+                                            }
+                                            //TH3 L->R
+                                            else if (point.X <= temp_Poi.X && Math.Abs(point.Y - temp_Poi.Y) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1 || int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.Y < point2.Y)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.Y < point2.Y)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                }
+
+                                            }
+                                            //TH4 D->U
+                                            else if (point.Y <= temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1 || int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.X > point2.X)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    Point point1 = (Point)Route.Rows[i][1];
+                                                    Point point2 = (Point)Route.Rows[i][2];
+                                                    if (point1.X > point2.X)
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                    }
+                                                    else
+                                                    {
+                                                        graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                    }
+                                                }
+
+                                            }
+                                        }
+                                        else if (c > 2) 
+                                        {
+                                            //TH1 R->L
+                                            if (point.X >= temp_Poi.X && Math.Abs(point.Y - temp_Poi.Y) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
+                                                {
+                                                    
+                                                   
+                                                    if (c == 3) 
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X < point.X) 
+                                                        {
+                                                            if (point2.Y > point3.Y) 
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else 
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else 
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y) 
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X < point.X)
+                                                        {
+                                                            if (point4.Y > point2.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y > point4.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                       
+                                                    }
+                                                   
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X < point.X)
+                                                        {
+                                                            if (point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y< point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X < point.X)
+                                                        {
+                                                            if (point4.Y < point2.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y < point4.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point4.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y < point4.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y < point1.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y < point1.Y && point4.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.X < point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X < point.X)
+                                                        {
+                                                            if (point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X < point.X)
+                                                        {
+                                                            if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point4.X < point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            //TH2 U->D
+                                            else if (point.Y >= temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
+                                                {
+
+
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point1.Y && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point4.X < point2.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X < point4.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point4.X && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point4.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X < point1.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X < point1.X && point3.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X < point1.X && point4.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point1.X && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point4.X > point2.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point4.X && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point4.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y < point.Y)
+                                                        {
+                                                            if (point4.X > point2.X && point4.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X > point2.X && point4.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X > point4.X && point3.X > point2.X && point4.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.X && point3.X > point2.X && point4.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point2.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point4.X && point1.X > point3.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point1.X > point4.X && point1.X > point3.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point3.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point4.X && point2.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point4.X && point2.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point4.Y < point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.X && point3.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            //TH3 L->R
+                                            else if (point.X <= temp_Poi.X && Math.Abs(point.Y - temp_Poi.Y) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
+                                                {
+
+
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X > point.X)
+                                                        {
+                                                            if (point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X > point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point4.Y < point2.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y < point4.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point4.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X < point.X)
+                                                        {
+                                                            if (point1.Y < point4.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y < point1.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X < point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y < point1.Y && point4.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.X < point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y < point1.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y < point1.Y && point3.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X > point.X)
+                                                        {
+                                                            if (point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X > point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point4.Y > point2.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X > point.X)
+                                                        {
+                                                            if (point1.Y > point4.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X > point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.X > point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.X > point.X)
+                                                        {
+                                                            if (point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.X > point.X)
+                                                        {
+                                                            if (point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.X > point.X)
+                                                        {
+                                                            if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.Y > point2.Y && point4.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point4.Y && point2.Y > point3.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.Y && point3.Y > point2.Y && point4.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point2.X > point.X)
+                                                        {
+                                                            if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point1.Y > point4.Y && point1.Y > point3.Y && point4.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point4.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point3.X > point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point4.Y && point2.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y < point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point4.Y && point1.Y > point4.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.Y > point1.Y && point4.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point4.X > point.X)
+                                                        {
+                                                            if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.Y > point2.Y && point1.Y > point3.Y && point2.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y < point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.Y > point1.Y && point2.Y > point3.Y && point1.Y > point3.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y > point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.Y && point3.Y > point2.Y && point1.Y < point2.Y)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                            //TH4 D->U
+                                            else if (point.Y <= temp_Poi.Y && Math.Abs(point.X - temp_Poi.X) < 60)
+                                            {
+                                                if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 1)
+                                                {
+
+
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point1.Y && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point4.X > point2.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point4.X && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point4.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 2)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point1.X && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point4.X < point2.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X < point4.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point4.X && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X < point4.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X < point1.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X < point1.X && point3.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X < point1.X && point4.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point4.Y > point.Y)
+                                                        {
+                                                            if (point1.X < point2.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point2.X < point1.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point3.X < point1.X && point3.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                                else if (int.Parse(DataTable.Rows[Get_index][4].ToString()) == 0)
+                                                {
+                                                    if (c == 3)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                    }
+                                                    else if (c == 4)
+                                                    {
+                                                        Point point1 = (Point)Route.Rows[i][1];
+                                                        Point point2 = (Point)Route.Rows[i][2];
+                                                        Point point3 = (Point)Route.Rows[i][3];
+                                                        Point point4 = (Point)Route.Rows[i][4];
+                                                        if (point1.Y > point.Y)
+                                                        {
+                                                            if (point4.X > point2.X && point4.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point4.X > point2.X && point4.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point4.X && point2.X > point3.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.X > point4.X && point3.X > point2.X && point4.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point3.Y > point4.X && point3.X > point2.X && point4.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point2.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point4.X && point1.X > point3.X && point4.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point1.X > point4.X && point1.X > point3.X && point4.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point4.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                        }
+                                                        else if (point3.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point4.X && point2.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point4.X && point2.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X && point1.X < point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point4);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point4.X && point1.X > point4.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point4.X > point1.X && point4.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+                                                        else if (point4.Y > point.Y)
+                                                        {
+                                                            if (point1.X > point2.X && point1.X > point3.X && point2.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                            else if (point1.X > point2.X && point1.X > point3.X && point2.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X < point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point3);
+                                                            }
+                                                            else if (point2.X > point1.X && point2.X > point3.X && point1.X > point3.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.X > point1.X && point3.X > point2.X && point1.X > point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point1);
+                                                            }
+                                                            else if (point3.Y > point1.X && point3.X > point2.X && point1.X < point2.X)
+                                                            {
+                                                                graphics.DrawLine(new Pen(Color.Red, 4), point, point2);
+                                                            }
+                                                        }
+
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                    }
+                                }
+                               
                             }
                         done:;
                         }
@@ -2357,6 +4377,7 @@ namespace Call_AGV
         #region Paint
         int mode = 0;
         List<Rectangle> Fill_circle = new List<Rectangle>();
+        List<Rectangle> Station = new List<Rectangle>();
         List<Point> Toa_do = new List<Point>();
        
         bool pressed = false;
@@ -2483,11 +4504,44 @@ namespace Call_AGV
                                 contextMenuStrip1.Items[1].Text = "Remove Point";
                                 contextMenuStrip1.Show(point);
 
+                               
+                            }
+                            i++;
+                        }
+                        foreach (var item in Station)
+                        {
+                            if ((e.X > item.X && (e.X < item.X + item.Width)) && (e.Y > item.Y && (e.Y < item.Y + item.Height)))
+                            {
+                                Point point = new Point(item.X, item.Y);
+
+                                for (int fi = 0; fi < Station_TB.Rows.Count; fi++)
+                                {
+                                    Point point1 = (Point)Station_TB.Rows[fi][2];
+                                    if (item.X == point1.X && item.Y == point1.Y)
+                                    {
+                                        MethodInvoker inv = delegate
+                                        {
+                                            Ten_Tram.Text = Station_TB.Rows[fi][0].ToString();
+                                            if ((Boolean)Station_TB.Rows[fi][1])
+                                            {
+                                                Trang_Thai.Text = "Pending transport";
+                                            }
+                                            else
+                                            {
+                                                Trang_Thai.Text = "Empty";
+                                            }
+                                        }; this.Invoke(inv);
+                                        break;
+                                    }
+                                }
+                                station_point = new Rectangle(point, new Size(Station_Size, Station_Size));
+                                contextMenuStrip2.Show(point);
+
                                 break;
                             }
                             i++;
                         }
-                        
+
                     }
                     else if (e.Button == MouseButtons.Left)
                     {
@@ -2614,6 +4668,7 @@ namespace Call_AGV
                             }
                             i++;
                         }
+                       
                         Call_AGV_Configue.Dem = FIFO;
                       
                     }
@@ -2657,10 +4712,78 @@ namespace Call_AGV
 
                     }
                     break;
+                case 3:
+                    if (e.Button == MouseButtons.Left)
+                    {
+
+                        foreach (var item in Board)
+                        {
+                            if ((e.X > item.X && (e.X < item.X + item.Width)) && (e.Y > item.Y && (e.Y < item.Y + item.Height)))
+                            {
+                                int X = item.X - size_rec / 2  ;
+                                int Y = item.Y - size_rec / 2  ;
+                                Rectangle rectangle = new Rectangle(X, Y, Station_Size, Station_Size);
+                                if (!Station.Contains(rectangle))
+                                {
+                                    Station.Add(rectangle);
+                                    int d = 0;
+                                    Station_TB.Rows.Add();
+                                    Station_TB.Rows[Station_TB.Rows.Count - 1][1] = true;
+                                    Station_TB.Rows[Station_TB.Rows.Count - 1][2] = new Point(X, Y);   
+                                    
+                                    panel1.Refresh();
+                                    break;
+                                }
+
+                            }
+
+                        }
+
+                    }
+                    else if (e.Button == MouseButtons.Right)
+                    {
+                        int i = 0;
+                        foreach (var item in Station)
+                        {
+                            if ((e.X > item.X && (e.X < item.X + item.Width)) && (e.Y > item.Y && (e.Y < item.Y + item.Height)))
+                            {
+                                Point point = new Point(item.X, item.Y);
+                                
+                                for (int fi = 0; fi < Station_TB.Rows.Count; fi++)
+                                {
+                                    Point point1 = (Point)Station_TB.Rows[fi][2];
+                                    if (item.X == point1.X && item.Y == point1.Y) 
+                                    {
+                                        MethodInvoker inv = delegate
+                                        {
+                                            Ten_Tram.Text = Station_TB.Rows[fi][0].ToString();
+                                            if ((Boolean)Station_TB.Rows[fi][1]) 
+                                            {
+                                                Trang_Thai.Text = "Pending transport";
+                                            }
+                                            else 
+                                            {
+                                                Trang_Thai.Text = "Empty";
+                                            }
+                                        }; this.Invoke(inv);
+                                        break;
+                                    }
+                                }
+                                station_point = new Rectangle(point, new Size(Station_Size, Station_Size));
+                                contextMenuStrip2.Show(point);
+
+                                break;
+                            }
+                            i++;
+                        }
+
+                    }
+                    break;
                 default:
                     break;
             }
         }
+        Rectangle station_point = new Rectangle();
         private void panel1_Paint(object sender, PaintEventArgs e)
         {
             Draw_Point_Board(e);
@@ -2711,6 +4834,8 @@ namespace Call_AGV
                 Community = ConfigXML.Get_community(Call_AGV_Configue.Selected_Station);
                 File_data = Call_AGV_Configue.File_data;
                 DataTable = Community.DataTable;
+                Station = Mapping.Rectangles;
+                Station_TB = Mapping.Sation;
                 Fill_circle = Mapping.Rectangles_2_Fill;
                 Route = Mapping.Route;
                 panel1.Refresh();
@@ -2733,6 +4858,8 @@ namespace Call_AGV
                 File_data = Call_AGV_Configue.File_data;
                 DataTable = Community.DataTable;
                 Fill_circle = Mapping.Rectangles_2_Fill;
+                Station = Mapping.Rectangles;
+                Station_TB = Mapping.Sation;
                 Route = Mapping.Route;
                 panel1.Refresh();
             }
@@ -2801,7 +4928,7 @@ namespace Call_AGV
             try
             {
                 StreamWriter streamWriter = new StreamWriter(Call_AGV_Configue.Path_Communicate + @"\" + ConfigXML.Read_txt);
-                streamWriter.WriteLine("Run:"+comboBox1.Text);
+                streamWriter.WriteLine("Run:"+ Environment.NewLine+ comboBox1.Text);
                 streamWriter.Close();
             }
             catch (Exception ex)
@@ -2812,19 +4939,20 @@ namespace Call_AGV
         }
         private void button3_Click(object sender, EventArgs e)
         {
-            if (button3.Text == "Make Route")
+            if (!label4.Visible)
             {
                 mode = 2;
-                button3.Text = "Apply Route";
+                label4.Visible = true;
             }
-            else if (button3.Text == "Apply Route")
+            else if (label4.Visible)
             {
                 try
                 {
                     mode = 0;
-                    button3.Text = "Make Route";
+                    label4.Visible = false;
                     Mapping.Route = Route;
                     ConfigXML.Update_Mapping(Mapping, comboBox1.Text);
+                    ConfigXML.Update_Mapping(Community, comboBox1.Text);
                 }
                 catch (Exception ex)
                 {
@@ -2834,30 +4962,72 @@ namespace Call_AGV
 
             }
         }
+        private void button9_Click(object sender, EventArgs e)
+        {
+            if (comboBox1.Text == "") return;
+
+            if (!label6.Visible)
+            {
+                if (Timer.Enabled)
+                {
+                    Timer.Stop();
+                    Timer.Enabled = false;
+                }
+                label6.Visible = true;
+                mode = 3;
+                panel1.Refresh();
+
+            }
+            else if (label6.Visible)
+            {
+                try
+                {
+                    label6.Visible = false;
+                    mode = 0;
+                    panel1.Refresh();
+                    Mapping.Rectangles_2_Fill = Fill_circle;
+                    Mapping.Rectangles = Station;
+                    Mapping.Sation = Station_TB;
+                    Community.DataTable = DataTable;
+                    Call_AGV_Configue.Selected_Station = comboBox1.Text;
+                    ConfigXML.UpdateFullSystem_Config(Call_AGV_Configue);
+                    ConfigXML.Update_Mapping(Mapping, comboBox1.Text);
+                    ConfigXML.Update_Mapping(Community, comboBox1.Text);
+
+                    MessageBox.Show("Edit Successfully");
+                }
+                catch (Exception ex)
+                {
+
+                    MessageBox.Show("Error Edit. Because " + ex.Message);
+                }
+            }
+        }
         private void button4_Click(object sender, EventArgs e)
         {
             if (comboBox1.Text == "") return;
            
-            if (button4.Text == "Edit Map")
+            if (!label3.Visible)
             {
                 if (Timer.Enabled) 
                 {
                     Timer.Stop();
                     Timer.Enabled = false;
                 }
-                button4.Text = "Done";
+                label3.Visible = true;
                 mode = 1;
                 panel1.Refresh();
 
             }
-            else if (button4.Text == "Done")
+            else if (label3.Visible)
             {
                 try
                 {
-                    button4.Text = "Edit Map";
+                    label3.Visible = false;
                     mode = 0;
                     panel1.Refresh();
                     Mapping.Rectangles_2_Fill = Fill_circle;
+                    Mapping.Rectangles = Station;
                     Community.DataTable = DataTable;
                     Call_AGV_Configue.Selected_Station = comboBox1.Text;
                     ConfigXML.UpdateFullSystem_Config(Call_AGV_Configue);
@@ -2931,10 +5101,7 @@ namespace Call_AGV
                 }; this.Invoke(inv);
             }
         }
-        private void button7_Click(object sender, EventArgs e)
-        {
-
-        }
+       
         private void TB_RUN_TextChanged(object sender, EventArgs e)
         {
             try
@@ -3267,20 +5434,65 @@ namespace Call_AGV
             MethodInvoker inv = delegate
             {
                 Community.DataTable = DataTable;
+                Mapping.Rectangles_2_Fill = Fill_circle;
+                Mapping.Rectangles = Station;
+                Mapping.Sation = Station_TB;
+                Call_AGV_Configue.File_data = File_data;
+                Call_AGV_Configue.Selected_Station = comboBox1.Text;
+                ConfigXML.UpdateFullSystem_Config(Call_AGV_Configue);
+                ConfigXML.Update_Mapping(Mapping, comboBox1.Text);
+                ConfigXML.Update_Mapping(Community, comboBox1.Text);
             }; this.Invoke(inv);
             TB_Save.Enabled = false;
             TB_Save.Visible = false;
         }
         List<string> File_data = new List<string>();
+        private void Ten_Tram_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                if (pressed) return;
+
+                MethodInvoker inv = delegate
+                {
+                    for (int i = 0; i < Station_TB.Rows.Count; i++)
+                    {
+                        Point point = (Point)Station_TB.Rows[i][2];
+                        if (point.X == station_point.X && point.Y == station_point.Y)
+                        {
+                            Station_TB.Rows[i][0] = Ten_Tram.Text;
+                        }
+
+                    }
+
+                }; this.Invoke(inv);
+
+            }
+            catch (Exception)
+            {
 
 
+            }
+        }
+        private void Trang_Thai_TextChanged(object sender, EventArgs e)
+        {
 
+        }
+        private void Station_remove_Click(object sender, EventArgs e)
+        {
 
+            var item = Station.Single(x => x.Contains(station_point));
+            int s = Station.IndexOf(item);
+            Station.Remove(item);
+            Station_TB.Rows[s].Delete();
+            Station_TB.AcceptChanges();
+            panel1.Refresh();
+
+        }
         #endregion
 
         private void button8_Click(object sender, EventArgs e)
         {
-           
             GPS = textBox3.Text;
             blink = 0;
             AGV_location(GPS);

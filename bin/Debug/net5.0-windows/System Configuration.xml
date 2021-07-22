@@ -3,8 +3,9 @@
   <Sel_travel />
   <File_data>
     <string>Trạm 1</string>
+    <string>Trạm 2</string>
   </File_data>
-  <Selected_Station>Trạm 1</Selected_Station>
+  <Selected_Station>Trạm 2</Selected_Station>
   <Path_Communicate>C:\Users\quyth\OneDrive\Máy tính\Communicate</Path_Communicate>
-  <Dem>28</Dem>
+  <Dem>6</Dem>
 </Call_AGV_Configue>

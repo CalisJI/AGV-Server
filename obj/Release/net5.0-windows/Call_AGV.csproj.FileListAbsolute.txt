@@ -14,6 +14,7 @@ F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\MySql.Data.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\Ubiety.Dns.Core.dll
 F:\VISUAL PROJECT\C#\Call_AGV\bin\Release\net5.0-windows\Zstandard.Net.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.Form1.resources
+F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.Properties.Resources.resources
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.csproj.GenerateResource.cache
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.GeneratedMSBuildEditorConfig.editorconfig
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.AssemblyInfoInputs.cache
@@ -24,4 +25,3 @@ F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\ref\Call_AGV.dll
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.pdb
 F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.genruntimeconfig.cache
-F:\VISUAL PROJECT\C#\Call_AGV\obj\Release\net5.0-windows\Call_AGV.csproj.AssemblyReference.cache

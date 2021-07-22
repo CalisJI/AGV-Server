@@ -103,6 +103,10 @@ namespace Call_AGV
                 Mapping.Route.Columns.Add("T2", typeof(Point));
                 Mapping.Route.Columns.Add("T3", typeof(Point));
                 Mapping.Route.Columns.Add("T4", typeof(Point));
+                Mapping.Sation = new System.Data.DataTable() { TableName = "Station" };
+                Mapping.Sation.Columns.Add("Sation Name", typeof(String));
+                Mapping.Sation.Columns.Add("Status", typeof(Boolean));
+                Mapping.Sation.Columns.Add("Point", typeof(Point));
                 XmlSerializer xmlSerializer = new XmlSerializer(typeof(Mapping));
                 Stream stream = new FileStream(Create_MapFile(Mapping_path), FileMode.Create);
                 XmlWriter xmlwriter = new XmlTextWriter(stream, Encoding.UTF8);
