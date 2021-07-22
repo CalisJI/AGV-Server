@@ -4587,10 +4587,10 @@ namespace Call_AGV
                                
                                
                                 Point point = new Point(item.X + item.Width / 2, item.Y + item.Height / 2);
-                                if (FIFO % 2 == 1) 
-                                {
-                                    temp_Poi = point;
-                                }
+                                //if (FIFO % 2 == 1) 
+                                //{
+                                //    temp_Poi = point;
+                                //}
                                 if (FIFO % 2 == 1) 
                                 {
                                     bool them = true;
@@ -4642,6 +4642,7 @@ namespace Call_AGV
                                     for (int ii = 1; ii < Route.Columns.Count; ii++)
                                     {
                                         object n = Route.Rows[get_row][ii];
+                                        if (n != DBNull.Value && (Point)n == point) break;
                                         if (n==DBNull.Value)
                                         {
                                             Route.Rows[get_row][ii] = point;
@@ -4655,6 +4656,8 @@ namespace Call_AGV
                                     for (int ii = 1; ii < Route.Columns.Count; ii++)
                                     {
                                         object n = Route.Rows[get_row][ii];
+                                        
+                                        if (n != DBNull.Value && (Point)n == point) break;
                                         if (n == DBNull.Value)
                                         {
                                             Route.Rows[get_row][ii] = point;

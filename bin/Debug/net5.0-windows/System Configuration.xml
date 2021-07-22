@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Call_AGV_Configue xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Sel_travel />
-  <File_data>
-    <string>Trạm 1</string>
-    <string>Trạm 2</string>
-  </File_data>
-  <Selected_Station>Trạm 2</Selected_Station>
+  <File_data />
+  <Selected_Station>Trạm 1</Selected_Station>
   <Path_Communicate>C:\Users\quyth\OneDrive\Máy tính\Communicate</Path_Communicate>
-  <Dem>6</Dem>
+  <Dem>116</Dem>
 </Call_AGV_Configue>

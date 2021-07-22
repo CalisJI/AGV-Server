@@ -1,123 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Mapping xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Position />
-  <Rectangles>
-    <Rectangle>
-      <Location>
-        <X>368</X>
-        <Y>218</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>368</X>
-      <Y>218</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>360</X>
-        <Y>180</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>360</X>
-      <Y>180</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>360</X>
-        <Y>120</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>360</X>
-      <Y>120</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>300</X>
-        <Y>120</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>300</X>
-      <Y>120</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>270</X>
-        <Y>120</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>270</X>
-      <Y>120</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>420</X>
-        <Y>90</Y>
-      </Location>
-      <Size>
-        <Width>16</Width>
-        <Height>16</Height>
-      </Size>
-      <X>420</X>
-      <Y>90</Y>
-      <Width>16</Width>
-      <Height>16</Height>
-    </Rectangle>
-  </Rectangles>
-  <Rectangles_2_Fill>
-    <Rectangle>
-      <Location>
-        <X>214</X>
-        <Y>154</Y>
-      </Location>
-      <Size>
-        <Width>8</Width>
-        <Height>8</Height>
-      </Size>
-      <X>214</X>
-      <Y>154</Y>
-      <Width>8</Width>
-      <Height>8</Height>
-    </Rectangle>
-    <Rectangle>
-      <Location>
-        <X>304</X>
-        <Y>334</Y>
-      </Location>
-      <Size>
-        <Width>8</Width>
-        <Height>8</Height>
-      </Size>
-      <X>304</X>
-      <Y>334</Y>
-      <Width>8</Width>
-      <Height>8</Height>
-    </Rectangle>
-  </Rectangles_2_Fill>
-  <Toa_Do />
+  <Rectangles />
+  <Rectangles_2_Fill />
   <Route>
     <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
       <xs:element name="NewDataSet" msdata:IsDataSet="true" msdata:MainDataTable="Point" msdata:UseCurrentLocale="true">
@@ -138,20 +23,7 @@
         </xs:complexType>
       </xs:element>
     </xs:schema>
-    <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
-      <DocumentElement>
-        <Point diffgr:id="Point1" msdata:rowOrder="0" diffgr:hasChanges="inserted">
-          <Start>
-            <X>218</X>
-            <Y>158</Y>
-          </Start>
-          <T1>
-            <X>308</X>
-            <Y>338</Y>
-          </T1>
-        </Point>
-      </DocumentElement>
-    </diffgr:diffgram>
+    <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1" />
   </Route>
   <Sation>
     <xs:schema id="NewDataSet" xmlns="" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
@@ -171,51 +43,6 @@
         </xs:complexType>
       </xs:element>
     </xs:schema>
-    <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
-      <DocumentElement>
-        <Station diffgr:id="Station1" msdata:rowOrder="0">
-          <Status>false</Status>
-          <Point>
-            <X>368</X>
-            <Y>218</Y>
-          </Point>
-        </Station>
-        <Station diffgr:id="Station2" msdata:rowOrder="1" diffgr:hasChanges="inserted">
-          <Status>true</Status>
-          <Point>
-            <X>360</X>
-            <Y>180</Y>
-          </Point>
-        </Station>
-        <Station diffgr:id="Station3" msdata:rowOrder="2" diffgr:hasChanges="inserted">
-          <Status>true</Status>
-          <Point>
-            <X>360</X>
-            <Y>120</Y>
-          </Point>
-        </Station>
-        <Station diffgr:id="Station4" msdata:rowOrder="3" diffgr:hasChanges="inserted">
-          <Status>true</Status>
-          <Point>
-            <X>300</X>
-            <Y>120</Y>
-          </Point>
-        </Station>
-        <Station diffgr:id="Station5" msdata:rowOrder="4" diffgr:hasChanges="inserted">
-          <Status>true</Status>
-          <Point>
-            <X>270</X>
-            <Y>120</Y>
-          </Point>
-        </Station>
-        <Station diffgr:id="Station6" msdata:rowOrder="5" diffgr:hasChanges="inserted">
-          <Status>true</Status>
-          <Point>
-            <X>420</X>
-            <Y>90</Y>
-          </Point>
-        </Station>
-      </DocumentElement>
-    </diffgr:diffgram>
+    <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1" />
   </Sation>
 </Mapping>
